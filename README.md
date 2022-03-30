@@ -7,3 +7,4 @@ Br0nze_seeker is a Wireless Hacking Toolkit written on python. Don't use it agai
 * cd br0nze_seeker
 * chmod +x br0nze_seeker install.sh
 * ./install.sh
+* And remember to run it as root/sudo
