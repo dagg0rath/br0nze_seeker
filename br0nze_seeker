@@ -481,27 +481,27 @@ def main():
 
 	def logo():
 		print(Fore.YELLOW + """
-	____________ _____ _   _  ______ _____ 
-	| ___ \ ___ \  _  | \ | ||___  /|  ___|
-	| |_/ / |_/ / | | |  \| |   / / | |__  
-	| ___ \    /| | | | . ` |  / /  |  __| 
-	| |_/ / |\ \\  |_| / |\  |./ /___| |___ 
-	\____/\_| \_|\___/\_| \_/\_____/\____/ 
-	 _____ _____ _____ _   __ ___________  
-	/  ___|  ___|  ___| | / /|  ___| ___ \ 
-	\ `--.| |__ | |__ | |/ / | |__ | |_/ / 
-	 `--. \  __||  __||    \ |  __||    /  
-	/\__/ / |___| |___| |\  \| |___| |\ \  
-	\____/\____/\____/\_| \_/\____/\_| \_| """)
+____________ _____ _   _  ______ _____ 
+| ___ \ ___ \  _  | \ | ||___  /|  ___|
+| |_/ / |_/ / | | |  \| |   / / | |__  
+| ___ \    /| | | | . ` |  / /  |  __| 
+| |_/ / |\ \\  |_| / |\  |./ /___| |___ 
+\____/\_| \_|\___/\_| \_/\_____/\____/ 
+ _____ _____ _____ _   __ ___________  
+/  ___|  ___|  ___| | / /|  ___| ___ \ 
+\ `--.| |__ | |__ | |/ / | |__ | |_/ / 
+ `--. \  __||  __||    \ |  __||    /  
+/\__/ / |___| |___| |\  \| |___| |\ \  
+\____/\____/\____/\_| \_/\____/\_| \_| """)
 
 	def back_m():
 		time.sleep(1)
 		menu = int(input(Fore.YELLOW + """
-	[?]--Return to main menu?
-	-------------------------
-	[01]--Yes
-	[02]--No
-	"""))
+[?]--Return to main menu?
+-------------------------
+[01]--Yes
+[02]--No
+"""))
 		if menu == 1:
 			print(Fore.YELLOW + "[+]--Returning to main menu...")
 			time.sleep(2)
@@ -514,17 +514,17 @@ def main():
 	def main_menu():
 		try:
 			choice = int(input("""
-	[?]--Welcome! Choose one of the options below:
-	-----------------------------------------------
-	[01]--WPA/WPA2 Password Cracking
-	[02]--WEP Cracking
-	[03]--Client Deauth Attack
-	[04]--Access Point DoS attack
-	[05]--Subnet Network Scanner
-	[06]--Port Scanner
-	[07]--MAC address changer
-	""" + Fore.MAGENTA + """[00]--Quit
-	""" + Style.RESET_ALL))
+[?]--Welcome! Choose one of the options below:
+-----------------------------------------------
+[01]--WPA/WPA2 Password Cracking
+[02]--WEP Cracking
+[03]--Client Deauth Attack
+[04]--Access Point DoS attack
+[05]--Subnet Network Scanner
+[06]--Port Scanner
+[07]--MAC address changer
+""" + Fore.MAGENTA + """[00]--Quit
+""" + Style.RESET_ALL))
 			if choice == 1:
 				wpa_crack()
 			elif choice == 2:
