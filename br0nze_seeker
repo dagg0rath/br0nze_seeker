@@ -12,7 +12,6 @@ from datetime import datetime
 
 def main():
 	def wpa_crack():
-		print("[+] This module requires a wordlist, you can generate one using the built-in module of this toolkit or use an existing one")
 		try:
 			print(Fore.MAGENTA + "[+] Use Ctrl + c at any time to proceed" + Style.RESET_ALL)
 			interface = input(Fore.YELLOW + "[?] Please specify the interface you wish to use: ")
